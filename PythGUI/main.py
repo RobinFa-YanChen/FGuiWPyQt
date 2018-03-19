@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QListWidget, QVBoxLayout, QLa
 from device import Device
 from license import License
 from myThread import Extended
+from myTree import MyTree
 
 class Main(QWidget):
     licenses = None
@@ -19,59 +20,35 @@ class Main(QWidget):
         self.widgets = []
         self.main()
 
+    def refreshClicked(self, tree):
+
+        self.progress.setMinimum(0)
+        self.progress.setValue(0)
+        self.progress.reset()
+
+        self.ext = Extended(0, self.devices, self.progress, tree)
+        self.ext.copied_percent_signal.connect(self.progressSignal)
+        self.ext.start()
+
     def progressFunc(self):
-        self.ext
         #completed = 0
         self.progress.setMinimum(0)
         self.progress.setMaximum(100)
         self.progress.setValue(0)
         self.progress.reset()
 
-        """while completed < 100:
-            time.sleep(0.08)
-            completed += 1
-            self.progress.setValue(completed)"""
-
-        self.ext = Extended()
-        self.ext.copied_percent_signal.connect(self.resetFunc)
+        self.ext = Extended(1, self.devices, self.progress)
+        self.ext.copied_percent_signal.connect(self.progressSignal)
         self.ext.start()
 
-    def resetFunc(self, value):
-        print("restFunc: ")
+    def progressSignal(self, value):
+        print("progressSignal: ")
         self.progress.setValue(value)
         #self.progress.reset()
         #print("text", self.progress.isTextVisible())
 
-    def getDevices(self):
-        self.progress.setMinimum(0)
-        self.progress.reset()
-        self.progress.setValue(0)
-        names = subprocess.Popen(['adb', 'self.devices',  '-l'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, errs = names.communicate()
-        outs = str(out, 'utf-8').split()
-        del outs[0:4]
-        length = len(outs)
-        n = length/7
-        
-        self.progress.setMaximum(n)
-        
-
-
-        # bilde neue Struktur
-        struct = [[] for i in range(int(n))]
-        for i in range(int(n)):
-
-            struct[i] = outs[i*7:(i+1)*7]
-            id = struct[i][0]
-
-            item = QTreeWidgetItem()
-            item.setCheckState(0, 2)
-            item.setText(2, id)
-
-            device = Device(id, item)
-            device.getName()
-            self.devices.append(device)
-            self.progress.setValue(i+1)
+    def resetFunc(self):
+        return
 
     def getButtons(self, QDialog, tree):
         b1=QPushButton("Refresh", QDialog)
@@ -108,27 +85,6 @@ class Main(QWidget):
             combo.addItem(self.licenses[i])
         return combo
 
-    def buildDevicesWidget(self, tree):
-
-        tree.setColumnCount(3)
-        tree.setHeaderLabels(['Checkbox','Name','Id'])
-        
-        #einlesen der self.Devices
-        self.getDevices()
-
-        for i in range(len(self.devices)):
-            tree.addTopLevelItem(self.devices[i].WidgetItem)
-
-    def refreshClicked(self, tree):
-        self.progress.setValue(0)
-        for i in range(len(self.devices)):
-            del self.devices[0]
-        for j in range(tree.topLevelItemCount()):
-            tree.takeTopLevelItem(0)
-        self.buildDevicesWidget(tree)
-        print("len: ", len(self.devices))
-        print("zeilen: ", tree.topLevelItemCount())
-
     def main(self):
         
         self.left = 10
@@ -160,8 +116,8 @@ class Main(QWidget):
 
         self.progress =QProgressBar()
 
-        list = QTreeWidget()
-        self.buildDevicesWidget(list)
+        list = MyTree(self.progress, self.devices)
+        list.buildDevicesWidget()
 
         window_list_layout.append(list)
 
@@ -178,7 +134,7 @@ class Main(QWidget):
 
         self.makeLayout(False, window_layout, self)
 
-        print("self.devices: ", self.devices)
+        print("devices: ", self.devices)
 
         self.show()
 
@@ -186,5 +142,9 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     
     main = Main()
+
+    layout = QHBoxLayout()
+    layout.addWidget(main)
+
 
     sys.exit(app.exec_())
